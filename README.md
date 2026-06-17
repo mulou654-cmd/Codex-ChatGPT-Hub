@@ -1,5 +1,7 @@
 # Codex ChatGPT Hub
 
+![jaigou](photo\jaigou.png)
+
 让 ChatGPT 重新做回大脑和决策者，让 Codex 回到纯粹执行者的位置。
 
 这个项目不是要把 ChatGPT 包装成另一个代码工具，也不是让 Codex 在本地独自消耗大量 token 做完整的思维博弈。它提供一个共享 MCP Hub：ChatGPT 负责研究、权衡、计划、验收和决策；Codex 负责读写文件、运行命令、改代码、做实验、回传结果。两边通过同一套结构化记忆交换最终决策、证据链、执行记录、日志、文件片段和项目状态。
