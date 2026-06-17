@@ -1,0 +1,9 @@
+[mcp_servers.codex-chatgpt-hub]
+command = "node"
+args = ["/absolute/path/to/Codex-ChatGPT-Hub/dist/index.js"]
+startup_timeout_sec = 10
+
+# Optional environment variables passed to the MCP server process.
+[mcp_servers.codex-chatgpt-hub.env]
+MCP_HUB_DATA_DIR = "/absolute/path/to/Codex-ChatGPT-Hub/.data"
+MCP_HUB_WORKSPACE = "/absolute/path/to/Codex-ChatGPT-Hub"

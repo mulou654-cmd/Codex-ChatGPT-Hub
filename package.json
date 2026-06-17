@@ -1,0 +1,37 @@
+{
+  "name": "codex-chatgpt-hub",
+  "version": "0.1.0",
+  "description": "A shared MCP collaboration hub for Codex and ChatGPT.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "codex-chatgpt-hub": "./dist/index.js",
+    "mcp-hub": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev:http": "tsx src/http.ts",
+    "dev": "tsx src/index.ts",
+    "setup": "node dist/cli.js setup",
+    "serve": "node dist/cli.js serve",
+    "config": "node dist/cli.js config",
+    "tunnel": "node dist/cli.js tunnel",
+    "doctor": "node dist/cli.js doctor",
+    "tools": "node dist/cli.js tools",
+    "wrap": "node dist/cli.js run",
+    "http": "node dist/http.js",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
