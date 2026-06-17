@@ -100,7 +100,7 @@ async function setup() {
     MCP_HUB_WORKSPACE: existing.MCP_HUB_WORKSPACE ?? projectRoot,
     MCP_HUB_HTTP_HOST: existing.MCP_HUB_HTTP_HOST ?? "127.0.0.1",
     MCP_HUB_HTTP_PORT: existing.MCP_HUB_HTTP_PORT ?? "3333",
-    MCP_HUB_HTTP_TOKEN: existing.MCP_HUB_HTTP_TOKEN ?? randomBytes(24).toString("hex")
+    MCP_HUB_HTTP_TOKEN: existing.MCP_HUB_HTTP_TOKEN
   };
 
   await mkdir(env.MCP_HUB_DATA_DIR, { recursive: true });
