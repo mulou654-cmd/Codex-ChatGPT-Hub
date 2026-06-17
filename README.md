@@ -31,7 +31,7 @@ npm run build
 npm run setup
 ```
 
-这会生成 `.env`、`.data/` 和 `codex-config.generated.toml`。这些都是本机文件，不应该提交到 GitHub。
+这会生成 `.env`、`.data/` 和 `codex-config.generated.toml`。
 
 ### 3. 接入 Codex
 
