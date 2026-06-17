@@ -68,7 +68,9 @@ http://127.0.0.1:3333/
 
 ### 5. 接入 ChatGPT Connector
 
-先配置 ngrok：
+先配置 ngrok。
+
+Windows 用户可以直接使用项目里的 `ngrok.exe`，不用再单独安装 ngrok；macOS / Linux 用户再运行安装命令：
 
 ```bash
 npm run tunnel -- install

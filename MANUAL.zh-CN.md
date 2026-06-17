@@ -237,7 +237,7 @@ npm run tunnel -- install
 
 - macOS：会优先尝试 `brew install ngrok`。
 - Linux：可以按 `npm run tunnel -- install --print-only` 输出的官方 apt 命令安装。
-- Windows：推荐 `winget install ngrok.ngrok`，或打开 `https://ngrok.com/download` 下载。
+- Windows：仓库里已经带了 `ngrok.exe`，通常不用再安装；如果你删除了它，再用 `winget install ngrok.ngrok` 或打开 `https://ngrok.com/download` 下载。
 
 ### 8.3 配置 token 并启动 tunnel
 
