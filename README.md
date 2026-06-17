@@ -1,6 +1,6 @@
 # Codex ChatGPT Hub
 
-![jaigou](photo\jaigou.png)
+![jaigou](photo/jaigou.png)
 
 让 ChatGPT 重新做回大脑和决策者，让 Codex 回到纯粹执行者的位置。
 
