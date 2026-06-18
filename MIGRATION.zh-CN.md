@@ -25,3 +25,5 @@ npm run setup
 npm run config -- install
 npm run serve -- restart
 ```
+
+如果你使用了 `MCP_HUB_MEMORY_SPACE`，迁移整个 `.data/` 会带上所有空间；只迁移单个项目时，复制 `.data/spaces/<space>/` 并在新电脑 `.env` 中设置同名空间。

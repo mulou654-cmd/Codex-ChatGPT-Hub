@@ -24,6 +24,7 @@ type Command = "setup" | "serve" | "doctor" | "tools" | "run" | "config" | "tunn
 
 interface HubEnv {
   MCP_HUB_DATA_DIR: string;
+  MCP_HUB_MEMORY_SPACE: string;
   MCP_HUB_WORKSPACE: string;
   MCP_HUB_HTTP_HOST: string;
   MCP_HUB_HTTP_PORT: string;
@@ -97,6 +98,7 @@ async function setup() {
   const existing = await readEnvFile();
   const env: HubEnv = {
     MCP_HUB_DATA_DIR: existing.MCP_HUB_DATA_DIR ?? join(projectRoot, ".data"),
+    MCP_HUB_MEMORY_SPACE: existing.MCP_HUB_MEMORY_SPACE ?? "default",
     MCP_HUB_WORKSPACE: existing.MCP_HUB_WORKSPACE ?? projectRoot,
     MCP_HUB_HTTP_HOST: existing.MCP_HUB_HTTP_HOST ?? "127.0.0.1",
     MCP_HUB_HTTP_PORT: existing.MCP_HUB_HTTP_PORT ?? "3333",
@@ -110,6 +112,7 @@ async function setup() {
   printBox("Codex ChatGPT Hub setup complete", [
     `Project: ${projectRoot}`,
     `Data dir: ${env.MCP_HUB_DATA_DIR}`,
+    `Memory space: ${env.MCP_HUB_MEMORY_SPACE}`,
     `Workspace: ${env.MCP_HUB_WORKSPACE}`,
     `Local MCP URL: http://${env.MCP_HUB_HTTP_HOST}:${env.MCP_HUB_HTTP_PORT}/mcp`,
     `Health URL: http://${env.MCP_HUB_HTTP_HOST}:${env.MCP_HUB_HTTP_PORT}/health`,
@@ -284,6 +287,7 @@ async function serve(args: string[]) {
     console.log(`Health:   ${status.health?.ok ? "ok" : "down"}${status.health?.detail ? ` - ${status.health.detail}` : ""}`);
     console.log(`URL:      ${status.configured.localUrl}`);
     console.log(`Data:     ${status.paths.dataDir}`);
+    console.log(`Space:    ${env.MCP_HUB_MEMORY_SPACE}`);
     console.log(`Logs:     ${status.paths.logPath}`);
     if (status.stalePid) {
       console.log(`Warning: stale pid file at ${status.paths.pidPath}`);
@@ -340,6 +344,7 @@ async function doctor() {
   console.log(`Local MCP URL: ${localMcpUrl}`);
   console.log(`Health check: ${service.configured.healthUrl} (${healthDetail})`);
   console.log(`Dashboard: http://${env.MCP_HUB_HTTP_HOST}:${env.MCP_HUB_HTTP_PORT}/`);
+  console.log(`Memory space: ${env.MCP_HUB_MEMORY_SPACE}`);
   console.log(`Service logs: ${service.paths.logPath}`);
   console.log(`Tools exposed: ${tools.length}`);
   console.log(`Codex config snippet: ${join(projectRoot, "codex-config.generated.toml")}`);
@@ -395,7 +400,7 @@ async function runWrappedCommand(args: string[]) {
       })
     ).id;
   const runId = createRunId();
-  const runDir = join(env.MCP_HUB_DATA_DIR, "runs", runId);
+  const runDir = join(resolveMemorySpaceDataDir(env.MCP_HUB_DATA_DIR, env.MCP_HUB_MEMORY_SPACE), "runs", runId);
   const stdoutPath = join(runDir, "stdout.log");
   const stderrPath = join(runDir, "stderr.log");
   const diffPath = join(runDir, "diff.patch");
@@ -729,10 +734,32 @@ function createRunId() {
   return `run_${Date.now().toString(36)}_${randomBytes(4).toString("hex")}`;
 }
 
+function resolveMemorySpaceDataDir(rootDataDir: string, space: string) {
+  const normalized = sanitizeMemorySpace(space);
+  const absoluteRoot = resolve(rootDataDir);
+  return normalized === "default" ? absoluteRoot : join(absoluteRoot, "spaces", normalized);
+}
+
+function sanitizeMemorySpace(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed || trimmed === "default") {
+    return "default";
+  }
+
+  const normalized = trimmed
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 80);
+  return normalized || `space-${Buffer.from(trimmed).toString("hex").slice(0, 16)}`;
+}
+
 async function loadHubEnv(): Promise<HubEnv> {
   const envFile = await readEnvFile();
   return {
     MCP_HUB_DATA_DIR: process.env.MCP_HUB_DATA_DIR ?? envFile.MCP_HUB_DATA_DIR ?? join(projectRoot, ".data"),
+    MCP_HUB_MEMORY_SPACE: process.env.MCP_HUB_MEMORY_SPACE ?? envFile.MCP_HUB_MEMORY_SPACE ?? "default",
     MCP_HUB_WORKSPACE: process.env.MCP_HUB_WORKSPACE ?? envFile.MCP_HUB_WORKSPACE ?? projectRoot,
     MCP_HUB_HTTP_HOST: process.env.MCP_HUB_HTTP_HOST ?? envFile.MCP_HUB_HTTP_HOST ?? "127.0.0.1",
     MCP_HUB_HTTP_PORT: process.env.MCP_HUB_HTTP_PORT ?? envFile.MCP_HUB_HTTP_PORT ?? "3333",
@@ -789,6 +816,7 @@ startup_timeout_sec = 10
 
 [mcp_servers.codex-chatgpt-hub.env]
 MCP_HUB_DATA_DIR = "${env.MCP_HUB_DATA_DIR}"
+MCP_HUB_MEMORY_SPACE = "${env.MCP_HUB_MEMORY_SPACE}"
 MCP_HUB_WORKSPACE = "${env.MCP_HUB_WORKSPACE}"
 `;
 }

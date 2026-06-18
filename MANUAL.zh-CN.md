@@ -40,7 +40,7 @@ ChatGPT planning brain <-> MCP Hub <-> Codex execution agent
 - `src/index.ts`：stdio MCP，给 Codex 本地使用。
 - `src/http.ts`：HTTP MCP，给 ChatGPT Connector 或远端客户端使用。
 
-默认数据写入 `.data/`：
+默认记忆空间是 `default`，数据直接写入 `.data/`：
 
 ```text
 .data/
@@ -50,6 +50,23 @@ ChatGPT planning brain <-> MCP Hub <-> Codex execution agent
   runs/                # 命令运行归档
   service/             # HTTP MCP pid 和日志
 ```
+
+如果设置 `MCP_HUB_MEMORY_SPACE=paper-a`，共享记忆会写入独立目录：
+
+```text
+.data/
+  service/             # 服务管理状态仍在根数据目录
+  ngrok/               # tunnel 状态仍在根数据目录
+  spaces/
+    paper-a/
+      hub-state.json
+      paper-state.json
+      session-state.json
+      profile-state.json
+      runs/
+```
+
+这样临时测试、论文项目、产品项目可以分别使用不同空间，避免共享记忆互相污染。
 
 ## 3. 快速部署
 
@@ -118,6 +135,7 @@ codex-config.generated.toml
 
 ```bash
 MCP_HUB_DATA_DIR=.data
+MCP_HUB_MEMORY_SPACE=default
 MCP_HUB_WORKSPACE=/absolute/path/to/Codex-ChatGPT-Hub
 MCP_HUB_HTTP_HOST=127.0.0.1
 MCP_HUB_HTTP_PORT=3333
@@ -128,7 +146,8 @@ MCP_HUB_PUBLIC_URL=https://xxxx.ngrok-free.dev
 
 说明：
 
-- `MCP_HUB_DATA_DIR`：Hub 状态文件目录。
+- `MCP_HUB_DATA_DIR`：Hub 根数据目录。
+- `MCP_HUB_MEMORY_SPACE`：当前记忆空间。`default` 使用 `.data/`；其它名字使用 `.data/spaces/<name>/`。
 - `MCP_HUB_WORKSPACE`：允许 MCP 搜索和读取的项目根目录。
 - `MCP_HUB_HTTP_HOST` / `MCP_HUB_HTTP_PORT`：HTTP MCP 监听地址。
 - `MCP_HUB_HTTP_TOKEN`：可选 HTTP Bearer token。默认不设置；ChatGPT Connector 快速部署使用 No Auth。
@@ -177,6 +196,7 @@ startup_timeout_sec = 10
 
 [mcp_servers.codex-chatgpt-hub.env]
 MCP_HUB_DATA_DIR = "/absolute/path/to/Codex-ChatGPT-Hub/.data"
+MCP_HUB_MEMORY_SPACE = "default"
 MCP_HUB_WORKSPACE = "/absolute/path/to/Codex-ChatGPT-Hub"
 ```
 
@@ -212,6 +232,38 @@ http://127.0.0.1:3333/
 ```
 
 dashboard 会显示服务状态、Connector URL、Codex 配置、工具数量、memory 概览、run archive 和维护建议。
+
+### 7.1 记忆空间隔离
+
+如果同一个 Hub 同时服务多个项目，建议每个项目使用一个独立 `MCP_HUB_MEMORY_SPACE`：
+
+```bash
+MCP_HUB_MEMORY_SPACE=my-paper
+```
+
+设置位置：
+
+1. 修改 `.env`。
+2. 执行 `npm run config -- install`，让 Codex stdio MCP 也使用同一个空间。
+3. 执行 `npm run serve -- restart`，让 HTTP MCP 重新读取空间配置。
+
+空间名会被清洗成安全目录名，只保留字母、数字、`.`、`_` 和 `-`；其它字符会变成 `-`。
+
+典型用法：
+
+```bash
+MCP_HUB_MEMORY_SPACE=default       # 主项目或旧数据
+MCP_HUB_MEMORY_SPACE=scratch-test  # 临时测试
+MCP_HUB_MEMORY_SPACE=paper-vision  # 某个论文项目
+```
+
+非默认空间的数据位置：
+
+```text
+.data/spaces/<space>/
+```
+
+服务 pid、HTTP 日志、ngrok 日志仍在根 `.data/service/` 和 `.data/ngrok/`，因为它们描述的是本机服务本身，不属于某个研究记忆空间。
 
 ## 8. 接入 ChatGPT Connector
 
@@ -381,6 +433,8 @@ npm run tunnel -- start-watcher
 ### 9.2 带旧电脑记忆迁移
 
 如果只 clone 代码，新电脑会是干净 Hub。若要保留旧电脑上的任务、论文记忆、实验日志、run archive，需要迁移 `.data/`。
+
+迁移整个 `.data/` 会带上所有记忆空间；如果只迁移某个项目空间，可以只复制 `.data/spaces/<space>/`，并在新电脑 `.env` 里设置相同的 `MCP_HUB_MEMORY_SPACE`。
 
 旧电脑打包：
 
@@ -768,6 +822,23 @@ npm run tunnel -- start
 npm run tunnel -- start-watcher
 ```
 
+### 13.6 不同项目的记忆混在一起
+
+说明多个项目正在共用同一个 `MCP_HUB_MEMORY_SPACE`。给当前项目设置独立空间：
+
+```bash
+MCP_HUB_MEMORY_SPACE=my-project
+```
+
+然后执行：
+
+```bash
+npm run config -- install
+npm run serve -- restart
+```
+
+之后新的 hub、paper、session、run、profile 记录都会写入 `.data/spaces/my-project/`。
+
 ## 14. 安全边界
 
 - `hub_read_file` 只允许读取 `MCP_HUB_WORKSPACE` 目录内的文本文件。
@@ -787,6 +858,7 @@ npm run tunnel -- start-watcher
 .env
 .data/
 notes/
+nanobot/
 node_modules/
 dist/
 codex-config.generated.toml

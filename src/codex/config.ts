@@ -8,6 +8,7 @@ export const MANAGED_END = "# END CODEX CHATGPT HUB MANAGED MCP";
 
 export interface CodexConfigEnv {
   MCP_HUB_DATA_DIR: string;
+  MCP_HUB_MEMORY_SPACE?: string;
   MCP_HUB_WORKSPACE: string;
 }
 
@@ -104,6 +105,7 @@ export function renderManagedBlock(input: Pick<CodexConfigInstallInput, "project
     "",
     `[mcp_servers.${formatTomlKey(serverName)}.env]`,
     `MCP_HUB_DATA_DIR = ${formatTomlString(input.env.MCP_HUB_DATA_DIR)}`,
+    `MCP_HUB_MEMORY_SPACE = ${formatTomlString(input.env.MCP_HUB_MEMORY_SPACE ?? "default")}`,
     `MCP_HUB_WORKSPACE = ${formatTomlString(input.env.MCP_HUB_WORKSPACE)}`,
     MANAGED_END
   ].join("\n");

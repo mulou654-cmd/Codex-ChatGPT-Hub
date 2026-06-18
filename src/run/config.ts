@@ -1,5 +1,5 @@
 import path from "node:path";
 
-import { dataDir } from "../hub/config.js";
+import { spaceDataDir } from "../hub/config.js";
 
-export const runsDir = path.join(dataDir, "runs");
+export const runsDir = path.join(spaceDataDir, "runs");

@@ -2,6 +2,7 @@ node_modules/
 dist/
 .data/
 notes/
+nanobot/
 .env
 codex-config.generated.toml
 .DS_Store

@@ -1,5 +1,6 @@
 import type { ReadResourceResult, Resource } from "@modelcontextprotocol/sdk/types.js";
 
+import { dataDir, memorySpace, spaceDataDir, workspaceRoot } from "../hub/config.js";
 import { getHubOverview } from "../hub/store.js";
 
 const statusUri = "mcp://codex-chatgpt-hub/status";
@@ -56,6 +57,10 @@ export async function readResource(uri: string): Promise<ReadResourceResult> {
             server: "codex-chatgpt-hub",
             pid: process.pid,
             cwd: process.cwd(),
+            workspaceRoot,
+            dataDir,
+            memorySpace,
+            spaceDataDir,
             node: process.version,
             startedAt: new Date().toISOString()
           },

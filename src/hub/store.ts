@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dataDir, statePath } from "./config.js";
+import { spaceDataDir, statePath } from "./config.js";
 import type {
   HubActor,
   HubContextEntry,
@@ -255,10 +255,10 @@ export async function loadState(): Promise<HubState> {
 }
 
 async function saveState(state: HubState) {
-  await mkdir(dataDir, { recursive: true });
+  await mkdir(spaceDataDir, { recursive: true });
   state.updatedAt = nowIso();
 
-  const tempPath = path.join(dataDir, `hub-state.${process.pid}.${Date.now()}.tmp`);
+  const tempPath = path.join(spaceDataDir, `hub-state.${process.pid}.${Date.now()}.tmp`);
   await writeFile(tempPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   await rename(tempPath, statePath);
 }

@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
+import { dataDir, memorySpace, spaceDataDir, workspaceRoot } from "./hub/config.js";
 import { getHubOverview } from "./hub/store.js";
 import { getPaperOverview } from "./paper/store.js";
 import { getProfileOverview } from "./profile/store.js";
@@ -21,8 +22,7 @@ const host = process.env.MCP_HUB_HTTP_HOST ?? "127.0.0.1";
 const port = Number.parseInt(process.env.MCP_HUB_HTTP_PORT ?? "3333", 10);
 const token = process.env.MCP_HUB_HTTP_TOKEN;
 const publicUrl = process.env.MCP_HUB_PUBLIC_URL;
-const dataDir = process.env.MCP_HUB_DATA_DIR ?? ".data";
-const workspace = process.env.MCP_HUB_WORKSPACE ?? process.cwd();
+const workspace = workspaceRoot;
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const sessions = new Map<string, StreamableHTTPServerTransport>();
@@ -64,6 +64,8 @@ const httpServer = createServer(async (req, res) => {
         publicUrl: publicUrl ? withMcpPath(publicUrl) : undefined,
         dashboardUrl: `http://${host}:${port}/`,
         dataDir,
+        memorySpace,
+        spaceDataDir,
         workspace,
         auth: token ? "bearer" : "none",
         tools: {
@@ -336,6 +338,8 @@ function renderHomePage() {
 
     function renderMemory(data) {
       const rows = [
+        ["当前空间", data.memorySpace],
+        ["空间目录", data.spaceDataDir],
         ["Hub 任务", data.memory.hub.counts.tasks],
         ["论文项目", data.memory.paper.counts.projects],
         ["研究洞察", data.memory.paper.counts.insights],
@@ -371,7 +375,9 @@ function renderHomePage() {
       document.getElementById("artifactKinds").textContent = JSON.stringify(localizeArtifactKinds(data.runs.artifactKinds || {}), null, 2);
       const rows = [
         ["Run 索引", data.runs.index?.generatedAt || "尚未构建"],
-        ["数据目录", data.service.paths.dataDir],
+        ["服务数据目录", data.service.paths.dataDir],
+        ["记忆空间", data.memorySpace],
+        ["空间目录", data.spaceDataDir],
         ["服务日志", data.service.paths.logPath],
         ["清理预览", 'MCP tool: run_cleanup({ dryRun: true, maxAgeDays: 30, keepLast: 50 })'],
         ["实际清理", '需要 confirm: "DELETE_RUN_ARCHIVES"']
@@ -468,6 +474,8 @@ async function dashboardPayload() {
 
   return {
     service,
+    memorySpace,
+    spaceDataDir,
     memory: {
       hub,
       paper,
@@ -491,6 +499,7 @@ async function dashboardPayload() {
 function serviceEnv() {
   return {
     MCP_HUB_DATA_DIR: dataDir,
+    MCP_HUB_MEMORY_SPACE: memorySpace,
     MCP_HUB_WORKSPACE: workspace,
     MCP_HUB_HTTP_HOST: host,
     MCP_HUB_HTTP_PORT: String(port),
@@ -507,6 +516,7 @@ startup_timeout_sec = 10
 
 [mcp_servers.codex-chatgpt-hub.env]
 MCP_HUB_DATA_DIR = "${dataDir}"
+MCP_HUB_MEMORY_SPACE = "${memorySpace}"
 MCP_HUB_WORKSPACE = "${workspace}"
 `;
 }

@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dataDir } from "../hub/config.js";
+import { spaceDataDir } from "../hub/config.js";
 import type { HubActor } from "../hub/types.js";
 import { sessionStatePath } from "./config.js";
 import type {
@@ -407,12 +407,12 @@ async function appendHandoffEvent(state: SessionState, handoff: SessionHandoff) 
 }
 
 async function saveSessionState(state: SessionState) {
-  await mkdir(dataDir, { recursive: true });
+  await mkdir(spaceDataDir, { recursive: true });
   const diskState = await readSessionStateFromDisk();
   const mergedState = diskState ? mergeSessionStates(diskState, state) : state;
   mergedState.updatedAt = nowIso();
 
-  const tempPath = path.join(dataDir, `session-state.${process.pid}.${Date.now()}.tmp`);
+  const tempPath = path.join(spaceDataDir, `session-state.${process.pid}.${Date.now()}.tmp`);
   await writeFile(tempPath, `${JSON.stringify(mergedState, null, 2)}\n`, "utf8");
   await rename(tempPath, sessionStatePath);
 }

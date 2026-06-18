@@ -1,5 +1,5 @@
 import path from "node:path";
 
-import { dataDir } from "../hub/config.js";
+import { spaceDataDir } from "../hub/config.js";
 
-export const paperStatePath = path.join(dataDir, "paper-state.json");
+export const paperStatePath = path.join(spaceDataDir, "paper-state.json");

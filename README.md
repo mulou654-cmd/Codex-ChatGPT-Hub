@@ -33,6 +33,14 @@ npm run setup
 
 这会生成 `.env`、`.data/` 和 `codex-config.generated.toml`。
 
+默认记忆空间是 `default`，兼容旧的 `.data/`。如果你在做临时测试或多个项目并行，先在 `.env` 里改：
+
+```bash
+MCP_HUB_MEMORY_SPACE=project-name
+```
+
+非默认空间会写到 `.data/spaces/project-name/`，避免测试记忆和正式项目混在一起。
+
 ### 3. 接入 Codex
 
 ```bash
@@ -139,9 +147,10 @@ npm run tunnel -- status
 .env
 .data/
 notes/
+nanobot/
 node_modules/
 dist/
 codex-config.generated.toml
 ```
 
-其中 `notes/` 用于本地测试笔记或临时材料，不会上传到 GitHub。
+其中 `notes/` 用于本地测试笔记或临时材料，`nanobot/` 用于本地参考项目，都不会上传到 GitHub。

@@ -1,7 +1,7 @@
 import { copyFile, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dataDir, workspaceRoot } from "../hub/config.js";
+import { dataDir, spaceDataDir, workspaceRoot } from "../hub/config.js";
 import type { HubActor } from "../hub/types.js";
 import { paperStatePath } from "./config.js";
 import type {
@@ -861,12 +861,12 @@ export async function loadPaperState(): Promise<PaperState> {
 }
 
 async function savePaperState(state: PaperState) {
-  await mkdir(dataDir, { recursive: true });
+  await mkdir(spaceDataDir, { recursive: true });
   const currentDiskState = await readPaperStateFromDisk();
   const mergedState = currentDiskState ? mergePaperStates(currentDiskState, state) : state;
   mergedState.updatedAt = nowIso();
 
-  const tempPath = path.join(dataDir, `paper-state.${process.pid}.${Date.now()}.tmp`);
+  const tempPath = path.join(spaceDataDir, `paper-state.${process.pid}.${Date.now()}.tmp`);
   await writeFile(tempPath, `${JSON.stringify(mergedState, null, 2)}\n`, "utf8");
   await renameWithRetry(tempPath, paperStatePath);
 }
@@ -1199,7 +1199,7 @@ function resolveReadablePath(inputPath: string) {
     .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => path.resolve(entry));
-  const allowedRoots = [workspaceRoot, path.resolve(dataDir), ...extraImportRoots];
+  const allowedRoots = Array.from(new Set([workspaceRoot, path.resolve(dataDir), path.resolve(spaceDataDir), ...extraImportRoots]));
 
   if (!allowedRoots.some((root) => absolutePath === root || absolutePath.startsWith(`${root}${path.sep}`))) {
     throw new Error(`Path is outside allowed import roots: ${inputPath}. Add extra roots with MCP_HUB_IMPORT_ROOTS if needed.`);

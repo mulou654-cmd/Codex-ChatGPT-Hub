@@ -5,6 +5,7 @@ import path from "node:path";
 
 export interface HubHttpEnv {
   MCP_HUB_DATA_DIR: string;
+  MCP_HUB_MEMORY_SPACE?: string;
   MCP_HUB_WORKSPACE: string;
   MCP_HUB_HTTP_HOST: string;
   MCP_HUB_HTTP_PORT: string;
@@ -26,6 +27,7 @@ export interface ServiceStatus {
     port: number;
     localUrl: string;
     healthUrl: string;
+    memorySpace: string;
     token: "set" | "missing";
     publicUrl?: string;
   };
@@ -75,6 +77,7 @@ export async function getServiceStatus(projectRoot: string, env: HubHttpEnv): Pr
       port,
       localUrl: `http://${host}:${port}/mcp`,
       healthUrl,
+      memorySpace: env.MCP_HUB_MEMORY_SPACE ?? "default",
       token: env.MCP_HUB_HTTP_TOKEN ? "set" : "missing",
       publicUrl: env.MCP_HUB_PUBLIC_URL
     },

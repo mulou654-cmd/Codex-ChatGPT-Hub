@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dataDir, workspaceRoot } from "../hub/config.js";
+import { dataDir, memorySpace, spaceDataDir, workspaceRoot } from "../hub/config.js";
 
 export type ConnectionProfileMode = "codex-stdio" | "chatgpt-http" | "api-relay" | "hybrid-relay";
 
@@ -29,7 +29,7 @@ interface ProfileState {
   profiles: ConnectionProfile[];
 }
 
-const profileStatePath = path.join(dataDir, "profile-state.json");
+const profileStatePath = path.join(spaceDataDir, "profile-state.json");
 
 export async function listConnectionProfiles() {
   const state = await loadProfileState();
@@ -65,9 +65,9 @@ async function loadProfileState(): Promise<ProfileState> {
 }
 
 async function saveProfileState(state: ProfileState) {
-  await mkdir(dataDir, { recursive: true });
+  await mkdir(spaceDataDir, { recursive: true });
   state.updatedAt = new Date().toISOString();
-  const tempPath = path.join(dataDir, `profile-state.${process.pid}.${Date.now()}.tmp`);
+  const tempPath = path.join(spaceDataDir, `profile-state.${process.pid}.${Date.now()}.tmp`);
   await writeFile(tempPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   await rename(tempPath, profileStatePath);
 }
@@ -96,9 +96,10 @@ function defaultProfileState(): ProfileState {
         args: [path.join(process.cwd(), "dist/index.js")],
         env: {
           MCP_HUB_DATA_DIR: dataDir,
+          MCP_HUB_MEMORY_SPACE: memorySpace,
           MCP_HUB_WORKSPACE: workspaceRoot
         },
-        notes: ["使用 codex-config.generated.toml 中的配置片段。"],
+        notes: [`使用 codex-config.generated.toml 中的配置片段；当前记忆空间为 ${memorySpace}。`],
         createdAt: now,
         updatedAt: now
       },
