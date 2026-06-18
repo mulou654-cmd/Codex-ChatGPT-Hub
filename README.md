@@ -47,7 +47,7 @@ ChatGPT 验收 / 下一轮规划
 ```
 
 这就是一个轻量的 LLM OS：Planner 负责高层决策，Executor 负责确定性操作，Memory 保存跨轮上下文，Run Loop 把计划、执行、反馈和验收连成闭环。职责分层之后，Codex 不必在每次执行时重新消化完整自然语言讨论，token 主要花在实际工程操作和结果回传上；ChatGPT 也能用更高层的视角维护任务一致性、调度顺序和验收标准。
-
+![image](photo/image.png)
 ## 快速部署
 
 ### 1. 安装依赖并构建
