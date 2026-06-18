@@ -16,6 +16,7 @@ export interface WorkerStartOptions {
   intervalMs?: number;
   tag?: string;
   dryRun?: boolean;
+  codexCommand?: string[];
   model?: string;
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
   approval?: "untrusted" | "on-request" | "never";
@@ -28,7 +29,7 @@ export interface WorkerPaths {
   errorLogPath: string;
 }
 
-interface WorkerPidFile {
+export interface WorkerPidFile {
   pid: number;
   startedAt: string;
   command: string[];
@@ -39,6 +40,7 @@ interface WorkerPidFile {
   dryRun?: boolean;
   logPath: string;
   errorLogPath: string;
+  mode?: "background" | "foreground";
 }
 
 export function getWorkerPaths(env: WorkerServiceEnv): WorkerPaths {
@@ -82,6 +84,11 @@ export async function startWorkerService(projectRoot: string, env: WorkerService
   if (options.dryRun) {
     command.push("--dry-run");
   }
+  if (options.codexCommand) {
+    for (const part of options.codexCommand) {
+      command.push("--codex-command", part);
+    }
+  }
   if (options.model) {
     command.push("--model", options.model);
   }
@@ -114,7 +121,8 @@ export async function startWorkerService(projectRoot: string, env: WorkerService
     tag: options.tag,
     dryRun: options.dryRun,
     logPath: paths.logPath,
-    errorLogPath: paths.errorLogPath
+    errorLogPath: paths.errorLogPath,
+    mode: "background"
   };
   await writeFile(paths.pidPath, `${JSON.stringify(pidFile, null, 2)}\n`, "utf8");
 
@@ -126,6 +134,58 @@ export async function startWorkerService(projectRoot: string, env: WorkerService
   }
 
   return { alreadyRunning: false, pid: child.pid, paths };
+}
+
+export async function writeWorkerPidFile(
+  projectRoot: string,
+  env: WorkerServiceEnv,
+  options: {
+    pid: number;
+    command: string[];
+    intervalMs: number;
+    tag?: string;
+    dryRun?: boolean;
+    mode: "background" | "foreground";
+  }
+) {
+  const paths = getWorkerPaths(env);
+  await mkdir(paths.workerDir, { recursive: true });
+
+  const existing = await readWorkerPid(paths.pidPath).catch(() => undefined);
+  if (existing && existing.pid !== options.pid && isProcessRunning(existing.pid)) {
+    throw new Error(`Codex worker is already running (pid ${existing.pid}). Stop it before starting another worker.`);
+  }
+  if (existing && !isProcessRunning(existing.pid)) {
+    await unlink(paths.pidPath).catch(() => undefined);
+  }
+
+  const pidFile: WorkerPidFile = {
+    pid: options.pid,
+    startedAt: new Date().toISOString(),
+    command: options.command,
+    cwd: projectRoot,
+    memorySpace: env.MCP_HUB_MEMORY_SPACE ?? "default",
+    intervalMs: options.intervalMs,
+    tag: options.tag,
+    dryRun: options.dryRun,
+    logPath: paths.logPath,
+    errorLogPath: paths.errorLogPath,
+    mode: options.mode
+  };
+  await writeFile(paths.pidPath, `${JSON.stringify(pidFile, null, 2)}\n`, "utf8");
+
+  return paths;
+}
+
+export async function clearWorkerPidFile(env: WorkerServiceEnv, pid = process.pid) {
+  const paths = getWorkerPaths(env);
+  const existing = await readWorkerPid(paths.pidPath).catch(() => undefined);
+
+  if (!existing || existing.pid === pid || !isProcessRunning(existing.pid)) {
+    await unlink(paths.pidPath).catch(() => undefined);
+  }
+
+  return paths;
 }
 
 export async function stopWorkerService(env: WorkerServiceEnv) {

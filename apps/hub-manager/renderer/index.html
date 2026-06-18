@@ -20,6 +20,7 @@
       <nav class="nav">
         <button class="nav-item active" data-view="overview">概览</button>
         <button class="nav-item" data-view="spaces">记忆空间</button>
+        <button class="nav-item" data-view="worker">自动执行</button>
         <button class="nav-item" data-view="connections">连接状态</button>
         <button class="nav-item" data-view="logs">日志</button>
         <button class="nav-item" data-view="settings">设置</button>
@@ -112,6 +113,57 @@
             </div>
           </div>
           <div class="space-list" id="spaceList"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-worker">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Codex worker</h2>
+              <p>监听 ChatGPT 写入 Hub 的 `codex-auto` 任务，并打开可见终端执行。</p>
+            </div>
+            <button class="button ghost" data-action="worker-status">刷新状态</button>
+          </div>
+          <div class="worker-grid">
+            <article class="stat-card compact">
+              <div class="label">worker 状态</div>
+              <div class="value" id="workerRunning">-</div>
+              <div class="hint" id="workerSpace">-</div>
+            </article>
+            <article class="stat-card compact">
+              <div class="label">任务标签</div>
+              <div class="value">codex-auto</div>
+              <div class="hint">ChatGPT 发任务时必须带这个 tag。</div>
+            </article>
+          </div>
+          <div class="space-actions worker-actions">
+            <button class="button" data-worker-mode="once">单次执行并显示终端</button>
+            <button class="button" data-worker-mode="foreground">常驻监听并显示终端</button>
+            <button class="button ghost" data-action="worker-stop">停止 worker</button>
+          </div>
+          <div class="inline-output" id="workerActionOutput"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>worker 状态输出</h2>
+              <p>这里显示状态摘要；真正执行过程请看弹出的终端窗口。</p>
+            </div>
+          </div>
+          <pre id="workerStatusText"></pre>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>worker 日志尾部</h2>
+              <p>后台 worker 或前台 worker 写入的最近输出。</p>
+            </div>
+            <button class="button ghost" data-action="worker-logs">刷新日志</button>
+          </div>
+          <pre id="workerLogs"></pre>
         </section>
       </section>
 

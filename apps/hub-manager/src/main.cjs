@@ -52,6 +52,7 @@ function registerIpcHandlers() {
   ipcMain.handle("hub:get-state", async () => safeReply(() => hubCore.readManagerState()));
   ipcMain.handle("hub:set-space", async (_event, space) => safeReply(() => hubCore.setMemorySpace(sanitizeMemorySpace(String(space ?? "")))));
   ipcMain.handle("hub:run-action", async (_event, action) => safeReply(() => hubCore.runAction(String(action ?? ""))));
+  ipcMain.handle("hub:run-worker-terminal", async (_event, mode) => safeReply(() => hubCore.runWorkerTerminal(String(mode ?? ""))));
   ipcMain.handle("hub:open-external", async (_event, target) => safeReply(() => openExternal(String(target ?? ""))));
   ipcMain.handle("hub:open-path", async (_event, targetPath) => safeReply(() => openPath(String(targetPath ?? ""))));
 }

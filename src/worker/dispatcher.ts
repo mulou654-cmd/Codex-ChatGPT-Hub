@@ -18,6 +18,7 @@ export interface WorkerRunOptions {
   tag?: string;
   limit?: number;
   dryRun?: boolean;
+  codexCommand?: string[];
   model?: string;
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
   approval?: "untrusted" | "on-request" | "never";
@@ -164,9 +165,7 @@ function buildWrappedCodexCommand(task: HubTask, promptPath: string, options: Wo
     "--cd",
     workspaceRoot,
     "--sandbox",
-    options.sandbox ?? "workspace-write",
-    "--ask-for-approval",
-    options.approval ?? "never"
+    options.sandbox ?? "workspace-write"
   ];
 
   if (options.model) {
@@ -187,7 +186,7 @@ function buildWrappedCodexCommand(task: HubTask, promptPath: string, options: Wo
     "--stdin-file",
     promptPath,
     "--",
-    "codex",
+    ...(options.codexCommand ?? ["codex"]),
     ...codexArgs
   ];
 }

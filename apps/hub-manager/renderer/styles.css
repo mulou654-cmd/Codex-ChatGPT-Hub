@@ -137,6 +137,22 @@ p {
   flex-wrap: wrap;
 }
 
+.worker-actions {
+  margin-top: 14px;
+}
+
+.inline-output {
+  min-height: 42px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid #d8dde5;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #374151;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .button,
 .icon-button {
   min-height: 40px;
@@ -174,7 +190,8 @@ p {
 }
 
 .status-grid,
-.metric-grid {
+.metric-grid,
+.worker-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
@@ -193,6 +210,10 @@ p {
 .stat-card {
   min-height: 128px;
   padding: 18px;
+}
+
+.stat-card.compact {
+  min-height: 108px;
 }
 
 .label {
@@ -288,6 +309,10 @@ p {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.worker-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .metric-card {
   padding: 14px;
 }
@@ -365,11 +390,12 @@ pre {
   }
 
   .nav {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .status-grid,
-  .metric-grid {
+  .metric-grid,
+  .worker-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

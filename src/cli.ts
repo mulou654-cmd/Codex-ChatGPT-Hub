@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
@@ -333,11 +333,13 @@ async function manageWorker(args: string[]) {
 
   if (mode === "once") {
     const { runWorkerOnce } = await import("./worker/dispatcher.js");
+    const codexCommand = options.codexCommand ?? (await resolveCodexCommand());
     const result = await runWorkerOnce({
       projectRoot,
       tag: options.tag,
       limit: options.limit,
       dryRun: options.dryRun,
+      codexCommand,
       model: options.model,
       sandbox: options.sandbox,
       approval: options.approval
@@ -351,7 +353,58 @@ async function manageWorker(args: string[]) {
 
   if (mode === "foreground") {
     const { runWorkerOnce } = await import("./worker/dispatcher.js");
+    const { clearWorkerPidFile, writeWorkerPidFile } = await import("./worker/manager.js");
     const intervalMs = options.intervalMs ?? 15_000;
+    const codexCommand = options.codexCommand ?? (await resolveCodexCommand());
+    const command = [
+      process.execPath,
+      join(projectRoot, "dist/cli.js"),
+      "worker",
+      "foreground",
+      "--interval-ms",
+      String(intervalMs)
+    ];
+    if (options.tag) {
+      command.push("--tag", options.tag);
+    }
+    if (options.dryRun) {
+      command.push("--dry-run");
+    }
+    for (const part of codexCommand) {
+      command.push("--codex-command", part);
+    }
+    if (options.model) {
+      command.push("--model", options.model);
+    }
+    if (options.sandbox) {
+      command.push("--sandbox", options.sandbox);
+    }
+    if (options.approval) {
+      command.push("--approval", options.approval);
+    }
+
+    await writeWorkerPidFile(projectRoot, env, {
+      pid: process.pid,
+      command,
+      intervalMs,
+      tag: options.tag,
+      dryRun: options.dryRun,
+      mode: "foreground"
+    });
+    const cleanup = async () => {
+      await clearWorkerPidFile(env, process.pid).catch(() => undefined);
+    };
+    process.once("SIGINT", () => {
+      cleanup().finally(() => process.exit(130));
+    });
+    process.once("SIGTERM", () => {
+      cleanup().finally(() => process.exit(143));
+    });
+    process.once("exit", () => {
+      const paths = getForegroundWorkerPaths(env);
+      rmSync(paths.pidPath, { force: true });
+    });
+
     console.log(`Codex worker foreground started. Space=${env.MCP_HUB_MEMORY_SPACE} intervalMs=${intervalMs}`);
     for (;;) {
       const result = await runWorkerOnce({
@@ -359,6 +412,7 @@ async function manageWorker(args: string[]) {
         tag: options.tag,
         limit: options.limit,
         dryRun: options.dryRun,
+        codexCommand,
         model: options.model,
         sandbox: options.sandbox,
         approval: options.approval
@@ -375,6 +429,7 @@ async function manageWorker(args: string[]) {
       intervalMs: options.intervalMs,
       tag: options.tag,
       dryRun: options.dryRun,
+      codexCommand: options.codexCommand ?? (await resolveCodexCommand()),
       model: options.model,
       sandbox: options.sandbox,
       approval: options.approval
@@ -413,6 +468,14 @@ async function manageWorker(args: string[]) {
   }
 
   throw new Error(`Unknown worker mode: ${mode}. Expected once, foreground, start, stop, status, logs.`);
+}
+
+function getForegroundWorkerPaths(env: HubEnv) {
+  const space = env.MCP_HUB_MEMORY_SPACE ?? "default";
+  const spaceRoot = space === "default" ? env.MCP_HUB_DATA_DIR : join(env.MCP_HUB_DATA_DIR, "spaces", space);
+  return {
+    pidPath: join(spaceRoot, "worker", "codex-worker.pid.json")
+  };
 }
 
 async function doctor() {
@@ -691,6 +754,7 @@ function parseWorkerArgs(args: string[]) {
     intervalMs?: number;
     limit?: number;
     dryRun?: boolean;
+    codexCommand?: string[];
     model?: string;
     sandbox?: "read-only" | "workspace-write" | "danger-full-access";
     approval?: "untrusted" | "on-request" | "never";
@@ -716,6 +780,8 @@ function parseWorkerArgs(args: string[]) {
       parsed.intervalMs = parsePositiveInteger(value, option);
     } else if (option === "--limit") {
       parsed.limit = parsePositiveInteger(value, option);
+    } else if (option === "--codex-command") {
+      parsed.codexCommand = [...(parsed.codexCommand ?? []), value];
     } else if (option === "--model") {
       parsed.model = value;
     } else if (option === "--sandbox") {
@@ -742,6 +808,49 @@ function parsePositiveInteger(value: string, label: string) {
     throw new Error(`Invalid ${label}: ${value}`);
   }
   return parsed;
+}
+
+async function resolveCodexCommand(): Promise<string[]> {
+  if (process.platform !== "win32") {
+    return ["codex"];
+  }
+
+  const child = spawn("where.exe", ["codex"], {
+    cwd: projectRoot,
+    stdio: ["ignore", "pipe", "ignore"]
+  });
+  let stdout = "";
+  child.stdout?.on("data", (chunk: Buffer) => {
+    stdout += chunk.toString("utf8");
+  });
+
+  const exitCode = await new Promise<number>((resolvePromise) => {
+    child.on("error", () => resolvePromise(1));
+    child.on("close", (code) => resolvePromise(code ?? 1));
+  });
+
+  if (exitCode !== 0) {
+    return ["codex"];
+  }
+
+  const candidates = stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const cmdShim = candidates.find((candidate) => candidate.toLowerCase().endsWith(".cmd"));
+  if (cmdShim) {
+    const codexJs = pathFromNpmShim(cmdShim);
+    if (codexJs && existsSync(codexJs)) {
+      return [process.execPath, codexJs];
+    }
+  }
+
+  return [candidates.find((candidate) => candidate.toLowerCase().endsWith(".exe")) ?? candidates[0] ?? "codex"];
+}
+
+function pathFromNpmShim(cmdShim: string) {
+  const npmRoot = dirname(cmdShim);
+  return join(npmRoot, "node_modules", "@openai", "codex", "bin", "codex.js");
 }
 
 function parseTunnelArgs(args: string[]) {

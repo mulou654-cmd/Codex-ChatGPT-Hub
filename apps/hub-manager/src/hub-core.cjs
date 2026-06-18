@@ -1,4 +1,4 @@
-const { execFile } = require("node:child_process");
+const { execFile, spawn } = require("node:child_process");
 const fs = require("node:fs/promises");
 const fsSync = require("node:fs");
 const path = require("node:path");
@@ -53,6 +53,8 @@ function createHubCore(projectRoot = findProjectRoot()) {
     const dashboard = service.ok ? await getDashboard(config).catch((error) => ({ ok: false, error: error.message })) : undefined;
     const codexConfig = await getCommandText(projectRoot, ["run", "config", "--", "status"]).catch((error) => error.message);
     const tunnelStatus = await getCommandText(projectRoot, ["run", "tunnel", "--", "status"]).catch((error) => error.message);
+    const workerStatus = await getCommandText(projectRoot, ["run", "worker", "--", "status"]).catch((error) => error.message);
+    const workerLogs = await getCommandText(projectRoot, ["run", "worker", "--", "logs"]).catch(() => "");
     const logs = await getCommandText(projectRoot, ["run", "serve", "--", "logs"]).catch(() => "");
 
     return {
@@ -64,6 +66,8 @@ function createHubCore(projectRoot = findProjectRoot()) {
       dashboard,
       codexConfig,
       tunnelStatus,
+      workerStatus,
+      workerLogs,
       logs
     };
   }
@@ -87,6 +91,9 @@ function createHubCore(projectRoot = findProjectRoot()) {
       "serve-stop": ["run", "serve", "--", "stop"],
       "tunnel-start": ["run", "tunnel", "--", "start"],
       "tunnel-status": ["run", "tunnel", "--", "status"],
+      "worker-stop": ["run", "worker", "--", "stop"],
+      "worker-status": ["run", "worker", "--", "status"],
+      "worker-logs": ["run", "worker", "--", "logs"],
       doctor: ["run", "doctor"],
       tools: ["run", "tools"]
     };
@@ -103,12 +110,30 @@ function createHubCore(projectRoot = findProjectRoot()) {
     };
   }
 
+  async function runWorkerTerminal(mode) {
+    const normalized = String(mode ?? "");
+    if (normalized !== "once" && normalized !== "foreground") {
+      throw new Error(`Unsupported worker terminal mode: ${mode}`);
+    }
+
+    const env = await readEnvFile(envPath);
+    const config = normalizeConfig(projectRoot, env);
+    await openVisibleWorkerTerminal(projectRoot, config, normalized);
+    return {
+      output: normalized === "once"
+        ? "已打开可见终端执行 Codex worker 单次任务。终端会保留，方便查看执行结果。"
+        : "已打开可见终端启动 Codex worker 常驻监听。可以在终端里查看过程，或用 Ctrl+C 停止。",
+      state: await readManagerState()
+    };
+  }
+
   return {
     projectRoot,
     envPath,
     readManagerState,
     setMemorySpace,
-    runAction
+    runAction,
+    runWorkerTerminal
   };
 }
 
@@ -196,6 +221,93 @@ function getCommandText(projectRoot, args, timeoutMs = 60_000) {
 
     child.on("error", reject);
   });
+}
+
+async function openVisibleWorkerTerminal(projectRoot, config, mode) {
+  const childEnv = { ...process.env };
+  delete childEnv.ELECTRON_RUN_AS_NODE;
+
+  if (process.platform === "win32") {
+    const command = mode === "once" ? "npm run worker -- once" : "npm run worker -- foreground";
+    const title = mode === "once" ? "Codex Hub Worker - Once" : "Codex Hub Worker - Foreground";
+    const launcherPath = await writeWindowsWorkerLauncher(projectRoot, config, mode, title, command);
+    const psCommand = [
+      `$args = @(${quotePowerShell("/k")}, ${quotePowerShell(`"${launcherPath}"`)})`,
+      `Start-Process -FilePath ${quotePowerShell("cmd.exe")} -ArgumentList $args -WorkingDirectory ${quotePowerShell(projectRoot)} -WindowStyle Normal`
+    ].join("; ");
+    const child = spawn("powershell.exe", [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      psCommand
+    ], {
+      cwd: projectRoot,
+      windowsHide: true,
+      stdio: "ignore",
+      env: childEnv
+    });
+
+    await new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code && code !== 0) {
+          reject(new Error(`Failed to open worker terminal with exit code ${code}. Launcher: ${launcherPath}`));
+          return;
+        }
+        resolve();
+      });
+    });
+    return;
+  }
+
+  const command = mode === "once" ? "npm run worker -- once" : "npm run worker -- foreground";
+  const child = spawn("sh", ["-lc", `${quoteShell(command)}; printf '\\nCodex worker ended. Press Enter to close...'; read _`], {
+    cwd: projectRoot,
+    detached: true,
+    stdio: "ignore",
+    env: childEnv
+  });
+  child.unref();
+}
+
+async function writeWindowsWorkerLauncher(projectRoot, config, mode, title, command) {
+  const launcherDir = path.join(config.spaceDataDir, "worker", "launchers");
+  await fs.mkdir(launcherDir, { recursive: true });
+  const launcherPath = path.join(launcherDir, `codex-worker-${mode}.cmd`);
+  const doneText = mode === "once" ? "Codex worker finished." : "Codex worker stopped.";
+  const lines = [
+    "@echo off",
+    `title ${title}`,
+    `cd /d ${quoteBatchArg(projectRoot)}`,
+    "echo Codex ChatGPT Hub worker",
+    `echo Memory space: ${config.memorySpace}`,
+    `echo Workspace: ${config.workspace}`,
+    `echo Command: ${command}`,
+    "echo.",
+    `call ${command}`,
+    "set exitCode=%ERRORLEVEL%",
+    "echo.",
+    `echo ${doneText}`,
+    "echo Exit code: %exitCode%",
+    "echo This window stays open for inspection.",
+    "echo.",
+    "exit /b %exitCode%"
+  ];
+  await fs.writeFile(launcherPath, `${lines.join("\r\n")}\r\n`, "utf8");
+  return launcherPath;
+}
+
+function quotePowerShell(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function quoteBatchArg(value) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function quoteShell(value) {
+  return String(value).replace(/'/g, "'\\''");
 }
 
 function npmCommand(args) {

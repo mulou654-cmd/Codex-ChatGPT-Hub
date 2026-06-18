@@ -4,6 +4,7 @@ let currentView = "overview";
 const viewMeta = {
   overview: ["概览", "检查 Hub 状态、当前空间和连接入口"],
   spaces: ["记忆空间", "切换项目共享记忆，避免不同任务互相污染"],
+  worker: ["自动执行", "让 Codex 可见地执行 ChatGPT 投递的 codex-auto 任务"],
   connections: ["连接状态", "查看 Codex、ChatGPT Connector 和 tunnel 配置"],
   logs: ["日志", "查看服务日志和操作输出"],
   settings: ["设置", "项目路径、数据目录和工具列表"]
@@ -40,6 +41,9 @@ function bindActions() {
 
   document.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => runAction(button.dataset.action));
+  });
+  document.querySelectorAll("[data-worker-mode]").forEach((button) => {
+    button.addEventListener("click", () => runWorkerTerminal(button.dataset.workerMode));
   });
 }
 
@@ -90,6 +94,25 @@ async function runAction(action) {
     writeOutput(result.output || "命令执行完成。");
     render();
   } catch (error) {
+    writeOutput(error.message);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function runWorkerTerminal(mode) {
+  setBusy(true);
+  writeWorkerOutput(`正在打开 Codex worker 可见终端：${mode} ...`);
+  writeOutput(`正在打开 Codex worker 可见终端：${mode} ...`);
+  try {
+    const result = await unwrap(window.hubManager.runWorkerTerminal(mode));
+    state = result.state;
+    const message = result.output || "已打开 Codex worker 终端。";
+    writeWorkerOutput(message);
+    writeOutput(message);
+    render();
+  } catch (error) {
+    writeWorkerOutput(error.message);
     writeOutput(error.message);
   } finally {
     setBusy(false);
@@ -148,12 +171,14 @@ function render() {
 
   renderMemoryMetrics(dashboardBody);
   renderSpaces();
+  renderWorker();
   renderConnections();
   renderSettings();
 
   text("codexConfigText", state.codexConfig || "");
   text("tunnelStatusText", state.tunnelStatus || "");
   text("serviceLogs", state.logs || "暂无日志。");
+  text("workerLogs", state.workerLogs || "暂无 worker 日志。");
 }
 
 function renderHealthChecks(items) {
@@ -211,6 +236,14 @@ function renderSpaces() {
   }).join("");
 }
 
+function renderWorker() {
+  const status = state.workerStatus || "";
+  const running = /Codex worker:\s+running/i.test(status);
+  text("workerRunning", running ? "运行中" : "未运行");
+  text("workerSpace", `当前空间：${state.config.memorySpace}`);
+  text("workerStatusText", status || "暂无 worker 状态。");
+}
+
 function renderConnections() {
   const rows = [
     ["本地 MCP", state.config.localMcpUrl, "打开", () => openUrl(state.config.localMcpUrl)],
@@ -265,6 +298,10 @@ function renderError(error) {
 
 function writeOutput(value) {
   text("actionOutput", value || "");
+}
+
+function writeWorkerOutput(value) {
+  text("workerActionOutput", value || "");
 }
 
 function setBusy(isBusy) {
