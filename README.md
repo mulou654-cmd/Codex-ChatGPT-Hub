@@ -16,6 +16,38 @@ Hub     = 两者共享的任务、证据、执行记录和项目记忆
 
 ChatGPT 不需要直接看到 Codex 的隐藏思考过程。它需要看到的是可检索、可审计、可继续推进的外部事实：任务简报、工作区搜索结果、文件片段、Codex 执行记录、命令输出、实验产物、claim 的 evidence、framework 的 justification，以及 section 的 related-work anchor。
 
+## LLM OS 架构：Planner × Executor × Memory × Run Loop
+
+这个项目的核心痛点是：当 Codex 作为执行器时，如果还要同时理解复杂自然语言、拆解意图、判断优先级和处理工程细节，就会把大量 token 花在解释任务上。自然语言越长、上下文越散，Codex 的执行越容易出现偏差：同一件事可能被反复解释，隐含约束容易漏掉，本地执行也更难稳定复现。
+
+解决方式不是让每个模型都承担完整职责，而是明确分层：
+
+- **ChatGPT = Planner / Orchestrator**：负责理解人的意图、补全背景、拆分任务、制定验收标准，并把复杂目标压缩成结构化、低歧义的执行指令。
+- **Codex = Executor**：只接收已经整理好的任务简报，在本地工作区读写文件、运行命令、改代码、执行实验，并把结果回传。
+- **Hub = Memory / Control Plane**：作为 Planner 与 Executor 之间的中枢，管理任务状态、上下文、文件片段、执行记录、run 归档和可审计证据。
+- **Run Loop = 持续执行闭环**：Codex worker 从 Hub 领取任务，执行后写回结果；ChatGPT 再基于结果继续决策、拆分或验收。
+
+```text
+用户意图
+  |
+  v
+ChatGPT Planner / Orchestrator
+  |  理解意图、任务分解、约束补全、指令压缩
+  v
+Hub Memory / Control Plane
+  |  任务状态、共享上下文、run 记录、执行证据
+  v
+Codex Executor
+  |  文件修改、命令执行、测试验证、实验产物
+  v
+Hub 执行结果
+  |
+  v
+ChatGPT 验收 / 下一轮规划
+```
+
+这就是一个轻量的 LLM OS：Planner 负责高层决策，Executor 负责确定性操作，Memory 保存跨轮上下文，Run Loop 把计划、执行、反馈和验收连成闭环。职责分层之后，Codex 不必在每次执行时重新消化完整自然语言讨论，token 主要花在实际工程操作和结果回传上；ChatGPT 也能用更高层的视角维护任务一致性、调度顺序和验收标准。
+
 ## 快速部署
 
 ### 1. 安装依赖并构建
