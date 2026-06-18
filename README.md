@@ -1,6 +1,6 @@
 # Codex ChatGPT Hub
 
-##实际效果预览：
+## 实际效果预览：
 
 Chatgpt发送任务；
 <img width="1976" height="1280" alt="098c11eee3c7814308274a23672e66db" src="https://github.com/user-attachments/assets/7bd26dcd-ce26-42be-83f9-12547ba59cbb" />
