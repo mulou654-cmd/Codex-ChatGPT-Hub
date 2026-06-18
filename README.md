@@ -1,5 +1,7 @@
-<img width="1080" height="2400" alt="718e57aec05cec8ca2b20e5ef72fd95f" src="https://github.com/user-attachments/assets/cd8be4b5-c55b-402b-b4f5-11c0dbe1b82c" /># Codex ChatGPT Hub
-实际效果预览：
+# Codex ChatGPT Hub
+
+##实际效果预览：
+
 Chatgpt发送任务；
 <img width="1976" height="1280" alt="098c11eee3c7814308274a23672e66db" src="https://github.com/user-attachments/assets/7bd26dcd-ce26-42be-83f9-12547ba59cbb" />
 
@@ -15,8 +17,6 @@ hub管理器开启codex自动执行模式；
 
 手机也可以发送指令（解耦 codex api版 和 网页端账号）
 <img width="1080" height="2400" alt="718e57aec05cec8ca2b20e5ef72fd95f" src="https://github.com/user-attachments/assets/6bd9d3e3-0b15-4508-a1f3-70b608771b09" />
-
-
 
 ![jaigou](photo/jaigou.png)
 
