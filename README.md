@@ -108,19 +108,58 @@ No Auth
 
 ### 6. 日常启动
 
+推荐用桌面管理器启动和查看状态：
+
+```text
+apps/hub-manager/dist/win-unpacked/Codex ChatGPT Hub Manager.exe
+```
+
+也可以继续用命令行：
+
 ```bash
 npm run serve
 npm run tunnel -- start
 npm run tunnel -- start-watcher
 ```
 
-### 7. 常用检查
+### 7. 桌面管理器
+
+Windows 版 exe 已经内置在项目打包目录里：
+
+```text
+E:\Codex-ChatGPT-Hub\apps\hub-manager\dist\win-unpacked\Codex ChatGPT Hub Manager.exe
+```
+
+如果换到别的目录，以你本机项目路径为准，打开：
+
+```text
+apps/hub-manager/dist/win-unpacked/Codex ChatGPT Hub Manager.exe
+```
+
+管理器主要用来做几件事：
+
+- **概览**：查看当前记忆空间、HTTP MCP、Connector、认证方式和共享记忆数量。
+- **记忆空间**：切换 `default` / `ceshi` / 具体项目空间，避免不同项目的任务、上下文和执行记录混在一起。
+- **自动执行**：启动 Codex worker，让它读取 ChatGPT 写入 Hub 的 `codex-auto` 任务。
+- **连接状态**：查看本地 MCP、Dashboard、Connector URL、ngrok 和 Codex 配置。
+- **日志**：查看 Hub 服务日志、worker 日志和按钮执行输出。
+- **设置**：查看项目根目录、`.env`、workspace、data dir 和 memory space。
+
+自动执行页有两种启动方式：
+
+- **单次执行并显示终端**：打开一个可见终端，执行一次 `codex-auto` 任务；没有任务时会显示 idle。
+- **常驻监听并显示终端**：打开一个可见终端，持续监听 ChatGPT 投递的 `codex-auto` 任务；需要停止时在终端里按 `Ctrl+C`，或点管理器里的“停止 worker”。
+
+worker 会把执行过程显示在弹出的终端里，不会悄悄在后台跑。管理器里的 worker 状态和日志用于回看结果。
+
+### 8. 常用检查
 
 ```bash
 npm run doctor
 npm run tools
 npm run serve -- status
 npm run tunnel -- status
+npm run worker -- status
 ```
 
 ## 详细说明
