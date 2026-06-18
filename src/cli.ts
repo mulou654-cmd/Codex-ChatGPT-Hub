@@ -20,7 +20,7 @@ import {
   watchTunnel
 } from "./tunnel/ngrok.js";
 
-type Command = "setup" | "serve" | "doctor" | "tools" | "run" | "config" | "tunnel" | "help";
+type Command = "setup" | "serve" | "doctor" | "tools" | "run" | "config" | "tunnel" | "worker" | "help";
 
 interface HubEnv {
   MCP_HUB_DATA_DIR: string;
@@ -75,6 +75,11 @@ async function main() {
 
   if (command === "tunnel") {
     await manageTunnel(process.argv.slice(3));
+    return;
+  }
+
+  if (command === "worker") {
+    await manageWorker(process.argv.slice(3));
   }
 }
 
@@ -86,7 +91,8 @@ function parseCommand(value: string | undefined): Command {
     value === "tools" ||
     value === "run" ||
     value === "config" ||
-    value === "tunnel"
+    value === "tunnel" ||
+    value === "worker"
   ) {
     return value;
   }
@@ -319,6 +325,96 @@ async function serveForeground(env: HubEnv) {
   });
 }
 
+async function manageWorker(args: string[]) {
+  const env = await loadHubEnv();
+  applyEnv(env);
+  const mode = args[0] ?? "once";
+  const options = mode === "logs" ? {} : parseWorkerArgs(args.slice(1));
+
+  if (mode === "once") {
+    const { runWorkerOnce } = await import("./worker/dispatcher.js");
+    const result = await runWorkerOnce({
+      projectRoot,
+      tag: options.tag,
+      limit: options.limit,
+      dryRun: options.dryRun,
+      model: options.model,
+      sandbox: options.sandbox,
+      approval: options.approval
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status === "executed" && result.exitCode && result.exitCode !== 0) {
+      process.exit(result.exitCode);
+    }
+    return;
+  }
+
+  if (mode === "foreground") {
+    const { runWorkerOnce } = await import("./worker/dispatcher.js");
+    const intervalMs = options.intervalMs ?? 15_000;
+    console.log(`Codex worker foreground started. Space=${env.MCP_HUB_MEMORY_SPACE} intervalMs=${intervalMs}`);
+    for (;;) {
+      const result = await runWorkerOnce({
+        projectRoot,
+        tag: options.tag,
+        limit: options.limit,
+        dryRun: options.dryRun,
+        model: options.model,
+        sandbox: options.sandbox,
+        approval: options.approval
+      });
+      console.log(`${new Date().toISOString()} ${JSON.stringify(result)}`);
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, intervalMs));
+    }
+  }
+
+  const { getWorkerStatus, readWorkerLog, startWorkerService, stopWorkerService } = await import("./worker/manager.js");
+
+  if (mode === "start") {
+    const result = await startWorkerService(projectRoot, env, {
+      intervalMs: options.intervalMs,
+      tag: options.tag,
+      dryRun: options.dryRun,
+      model: options.model,
+      sandbox: options.sandbox,
+      approval: options.approval
+    });
+    console.log(
+      result.alreadyRunning
+        ? `Codex worker already running (pid ${result.pid}).`
+        : `Codex worker started in background (pid ${result.pid}).`
+    );
+    console.log(`Space: ${env.MCP_HUB_MEMORY_SPACE}`);
+    console.log(`Logs:  ${result.paths.logPath}`);
+    return;
+  }
+
+  if (mode === "stop") {
+    const result = await stopWorkerService(env);
+    console.log(result.stopped ? `Stopped Codex worker pid ${result.pid}.` : `Codex worker not stopped: ${result.reason}`);
+    return;
+  }
+
+  if (mode === "status") {
+    const status = await getWorkerStatus(env);
+    console.log(`Codex worker: ${status.running ? "running" : "stopped"}${status.process ? ` (pid ${status.process.pid})` : ""}`);
+    console.log(`Space:        ${status.memorySpace}`);
+    console.log(`Logs:         ${status.paths.logPath}`);
+    if (status.stalePid) {
+      console.log(`Warning: stale pid file at ${status.paths.pidPath}`);
+    }
+    return;
+  }
+
+  if (mode === "logs") {
+    const kind = args[1] === "stderr" ? "stderr" : "stdout";
+    console.log(await readWorkerLog(env, kind));
+    return;
+  }
+
+  throw new Error(`Unknown worker mode: ${mode}. Expected once, foreground, start, stop, status, logs.`);
+}
+
 async function doctor() {
   const env = await loadHubEnv();
   applyEnv(env);
@@ -419,12 +515,20 @@ async function runWrappedCommand(args: string[]) {
     metadata: { runId, cwd, stdoutPath, stderrPath, diffPath, artifactsDir }
   });
 
+  const stdinText = parsed.stdinFile ? await readFile(resolve(parsed.stdinFile), "utf8") : undefined;
   const startedAt = Date.now();
-  const result = await executeAndCapture(parsed.command, cwd, stdoutPath, stderrPath, {
-    MCP_HUB_RUN_ID: runId,
-    MCP_HUB_RUN_DIR: runDir,
-    MCP_HUB_RUN_ARTIFACTS_DIR: artifactsDir
-  });
+  const result = await executeAndCapture(
+    parsed.command,
+    cwd,
+    stdoutPath,
+    stderrPath,
+    {
+      MCP_HUB_RUN_ID: runId,
+      MCP_HUB_RUN_DIR: runDir,
+      MCP_HUB_RUN_ARTIFACTS_DIR: artifactsDir
+    },
+    stdinText
+  );
   const durationMs = Date.now() - startedAt;
   const diff = await readGitDiff(cwd);
   await writeFile(diffPath, diff, "utf8");
@@ -516,6 +620,7 @@ function parseRunArgs(args: string[]) {
     taskId?: string;
     projectId?: string;
     cwd?: string;
+    stdinFile?: string;
     command: string[];
   } = { command };
 
@@ -537,6 +642,8 @@ function parseRunArgs(args: string[]) {
       parsed.projectId = value;
     } else if (option === "--cwd") {
       parsed.cwd = value;
+    } else if (option === "--stdin-file") {
+      parsed.stdinFile = value;
     } else {
       throw new Error(`Unknown run option: ${option}`);
     }
@@ -575,6 +682,65 @@ function parseConfigArgs(args: string[]) {
     }
   }
 
+  return parsed;
+}
+
+function parseWorkerArgs(args: string[]) {
+  const parsed: {
+    tag?: string;
+    intervalMs?: number;
+    limit?: number;
+    dryRun?: boolean;
+    model?: string;
+    sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+    approval?: "untrusted" | "on-request" | "never";
+  } = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const option = args[index];
+
+    if (option === "--dry-run") {
+      parsed.dryRun = true;
+      continue;
+    }
+
+    const value = args[index + 1];
+    if (!option?.startsWith("--") || !value) {
+      throw new Error(`Invalid worker option near: ${option ?? ""}`);
+    }
+
+    index += 1;
+    if (option === "--tag") {
+      parsed.tag = value;
+    } else if (option === "--interval-ms") {
+      parsed.intervalMs = parsePositiveInteger(value, option);
+    } else if (option === "--limit") {
+      parsed.limit = parsePositiveInteger(value, option);
+    } else if (option === "--model") {
+      parsed.model = value;
+    } else if (option === "--sandbox") {
+      if (value !== "read-only" && value !== "workspace-write" && value !== "danger-full-access") {
+        throw new Error(`Invalid ${option}: ${value}`);
+      }
+      parsed.sandbox = value;
+    } else if (option === "--approval") {
+      if (value !== "untrusted" && value !== "on-request" && value !== "never") {
+        throw new Error(`Invalid ${option}: ${value}`);
+      }
+      parsed.approval = value;
+    } else {
+      throw new Error(`Unknown worker option: ${option}`);
+    }
+  }
+
+  return parsed;
+}
+
+function parsePositiveInteger(value: string, label: string) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${label}: ${value}`);
+  }
   return parsed;
 }
 
@@ -663,7 +829,8 @@ async function executeAndCapture(
   cwd: string,
   stdoutPath: string,
   stderrPath: string,
-  extraEnv: Record<string, string>
+  extraEnv: Record<string, string>,
+  stdinText?: string
 ) {
   const [executable, ...args] = command;
   if (!executable) {
@@ -673,18 +840,22 @@ async function executeAndCapture(
   const child = spawn(executable, args, {
     cwd,
     env: { ...process.env, ...extraEnv },
-    stdio: ["inherit", "pipe", "pipe"]
+    stdio: [stdinText === undefined ? "inherit" : "pipe", "pipe", "pipe"]
   });
   let stdout = "";
   let stderr = "";
 
-  child.stdout.on("data", (chunk: Buffer) => {
+  if (stdinText !== undefined) {
+    child.stdin?.end(stdinText);
+  }
+
+  child.stdout?.on("data", (chunk: Buffer) => {
     const text = chunk.toString("utf8");
     stdout += text;
     process.stdout.write(text);
   });
 
-  child.stderr.on("data", (chunk: Buffer) => {
+  child.stderr?.on("data", (chunk: Buffer) => {
     const text = chunk.toString("utf8");
     stderr += text;
     process.stderr.write(text);
@@ -832,6 +1003,7 @@ Commands:
   doctor  Check build files, .env, data dir, HTTP health, and exposed tool count
   tools   Print exposed MCP tool names grouped by hub/paper
   run     Run a command and capture stdout/stderr/diff into a session mirror
+  worker  Poll codex-auto hub tasks and execute them with codex exec
 
 Examples:
   node dist/cli.js config status
@@ -844,6 +1016,9 @@ Examples:
   node dist/cli.js serve restart
   node dist/cli.js serve status
   node dist/cli.js serve logs stderr
+  node dist/cli.js worker once --dry-run
+  node dist/cli.js worker start
+  node dist/cli.js worker status
   node dist/cli.js run -- -- npm run build
   node dist/cli.js run -- --session-id sess_x -- npm run typecheck
 `);
