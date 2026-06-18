@@ -18,6 +18,7 @@ hub管理器开启codex自动执行模式；
 手机也可以发送指令（解耦 codex api版 和 网页端账号）
 <img width="1080" height="2400" alt="718e57aec05cec8ca2b20e5ef72fd95f" src="https://github.com/user-attachments/assets/6bd9d3e3-0b15-4508-a1f3-70b608771b09" />
 
+## 项目介绍
 ![jaigou](photo/jaigou.png)
 
 让 ChatGPT 重新做回大脑和决策者，让 Codex 回到纯粹执行者的位置。
