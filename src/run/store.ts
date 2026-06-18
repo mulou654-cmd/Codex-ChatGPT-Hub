@@ -1,6 +1,8 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { getRuntimeMemoryInfo } from "../hub/config.js";
+import { readJsonFile } from "../utils/json.js";
 import { runsDir } from "./config.js";
 
 export type RunLogKind = "stdout" | "stderr";
@@ -175,12 +177,12 @@ export async function listRuns(limit = 20) {
 
 export async function readRunMeta(runId: string): Promise<RunMeta> {
   const metaPath = resolveRunPath(runId, "meta.json");
-  return JSON.parse(await readFile(metaPath, "utf8")) as RunMeta;
+  return readJsonFile<RunMeta>(metaPath);
 }
 
 export async function readRunManifest(runId: string): Promise<RunManifest> {
   const manifestPath = resolveRunPath(runId, "manifest.json");
-  return JSON.parse(await readFile(manifestPath, "utf8")) as RunManifest;
+  return readJsonFile<RunManifest>(manifestPath);
 }
 
 export async function writeRunManifest(runId: string) {
@@ -394,6 +396,7 @@ export async function getRunOverview() {
   }, {});
 
   return {
+    runtime: getRuntimeMemoryInfo(),
     totalRuns: runs.length,
     totalSizeBytes,
     newestRunAt: runs[0]?.endedAt ?? runs[0]?.updatedAt,
@@ -580,7 +583,7 @@ function normalizeRunRelativePath(filePath: string) {
 }
 
 async function readRunIndex(): Promise<RunIndex> {
-  const index = JSON.parse(await readFile(indexPath, "utf8")) as RunIndex;
+  const index = await readJsonFile<RunIndex>(indexPath);
   if (index.version !== 1 || !Array.isArray(index.runs)) {
     throw new Error("Invalid run index.");
   }

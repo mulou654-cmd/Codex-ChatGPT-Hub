@@ -2,7 +2,8 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dataDir, memorySpace, spaceDataDir, workspaceRoot } from "../hub/config.js";
+import { dataDir, getRuntimeMemoryInfo, memorySpace, spaceDataDir, workspaceRoot } from "../hub/config.js";
+import { parseJson } from "../utils/json.js";
 
 export type ConnectionProfileMode = "codex-stdio" | "chatgpt-http" | "api-relay" | "hybrid-relay";
 
@@ -44,6 +45,7 @@ export async function getProfileOverview() {
   }, {});
 
   return {
+    runtime: getRuntimeMemoryInfo(),
     counts: {
       profiles: profiles.length,
       enabled: profiles.filter((profile) => profile.enabled).length
@@ -61,7 +63,7 @@ async function loadProfileState(): Promise<ProfileState> {
   }
 
   const raw = await readFile(profileStatePath, "utf8");
-  return normalizeProfileState(JSON.parse(raw) as Partial<ProfileState>);
+  return normalizeProfileState(parseJson<Partial<ProfileState>>(raw));
 }
 
 async function saveProfileState(state: ProfileState) {

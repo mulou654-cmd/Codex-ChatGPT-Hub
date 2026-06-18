@@ -6,6 +6,22 @@ export const memorySpace = sanitizeMemorySpace(process.env.MCP_HUB_MEMORY_SPACE 
 export const spaceDataDir = resolveSpaceDataDir(dataDir, memorySpace);
 export const statePath = path.join(spaceDataDir, "hub-state.json");
 
+export interface RuntimeMemoryInfo {
+  memorySpace: string;
+  dataDir: string;
+  spaceDataDir: string;
+  workspaceRoot: string;
+}
+
+export function getRuntimeMemoryInfo(): RuntimeMemoryInfo {
+  return {
+    memorySpace,
+    dataDir,
+    spaceDataDir,
+    workspaceRoot
+  };
+}
+
 export function resolveSpaceDataDir(rootDataDir: string, space: string) {
   const normalized = sanitizeMemorySpace(space);
   const absoluteRoot = path.resolve(rootDataDir);

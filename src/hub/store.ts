@@ -1,7 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { spaceDataDir, statePath } from "./config.js";
+import { parseJson } from "../utils/json.js";
+import { getRuntimeMemoryInfo, type RuntimeMemoryInfo, spaceDataDir, statePath } from "./config.js";
 import type {
   HubActor,
   HubContextEntry,
@@ -69,6 +70,7 @@ export interface UpdateTaskStatusInput {
 }
 
 export interface TaskBriefing {
+  runtime: RuntimeMemoryInfo;
   task: HubTask;
   contexts: HubContextEntry[];
   plans: HubPlan[];
@@ -211,6 +213,7 @@ export async function getTaskBriefing(taskId: string): Promise<TaskBriefing> {
   }
 
   return {
+    runtime: getRuntimeMemoryInfo(),
     task,
     contexts: state.contexts.filter((entry) => entry.taskId === taskId).slice(0, maxBriefingItems),
     plans: state.plans.filter((plan) => plan.taskId === taskId).slice(0, maxBriefingItems),
@@ -224,6 +227,7 @@ export async function getTaskBriefing(taskId: string): Promise<TaskBriefing> {
 export async function getHubOverview() {
   const state = await loadState();
   return {
+    runtime: getRuntimeMemoryInfo(),
     version: state.version,
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,
@@ -242,7 +246,7 @@ export async function getHubOverview() {
 export async function loadState(): Promise<HubState> {
   try {
     const raw = await readFile(statePath, "utf8");
-    return normalizeState(JSON.parse(raw) as Partial<HubState>);
+    return normalizeState(parseJson<Partial<HubState>>(raw));
   } catch (error: unknown) {
     if (isFileMissingError(error)) {
       const state = createEmptyState();

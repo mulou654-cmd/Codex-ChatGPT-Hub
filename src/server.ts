@@ -11,6 +11,7 @@ import {
 import { getPrompt, prompts } from "./prompts/index.js";
 import { readResource, resources } from "./resources/index.js";
 import { callTool, tools } from "./tools/index.js";
+import { memorySpace, spaceDataDir } from "./hub/config.js";
 
 export function createMcpServer() {
   const server = new Server(
@@ -26,6 +27,7 @@ export function createMcpServer() {
       },
       instructions: [
         "This MCP server is a collaboration hub shared by Codex and ChatGPT.",
+        `Current memory space is "${memorySpace}" at "${spaceDataDir}". Treat it as the active isolated collaboration workspace.`,
         "Use hub_* tools to persist task briefs, context, plans, execution results, and workspace snapshots.",
         "For paper_* tools, every claim must include evidence, every framework must include justification, and every section must include a related-work anchor so the other agent can inspect the reasoning trail."
       ].join(" ")

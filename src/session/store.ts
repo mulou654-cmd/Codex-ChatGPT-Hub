@@ -1,8 +1,9 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { spaceDataDir } from "../hub/config.js";
+import { getRuntimeMemoryInfo, spaceDataDir } from "../hub/config.js";
 import type { HubActor } from "../hub/types.js";
+import { parseJson } from "../utils/json.js";
 import { sessionStatePath } from "./config.js";
 import type {
   SessionEvent,
@@ -338,6 +339,7 @@ export async function readSessionEvent(eventId: string) {
 export async function getSessionOverview() {
   const state = await loadSessionState();
   return {
+    runtime: getRuntimeMemoryInfo(),
     version: state.version,
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,
@@ -373,7 +375,7 @@ function eventToSearchText(event: SessionEvent) {
 export async function loadSessionState(): Promise<SessionState> {
   try {
     const raw = await readFile(sessionStatePath, "utf8");
-    return normalizeSessionState(JSON.parse(raw) as Partial<SessionState>);
+    return normalizeSessionState(parseJson<Partial<SessionState>>(raw));
   } catch (error: unknown) {
     if (isFileMissingError(error)) {
       const state = createEmptySessionState();
@@ -420,7 +422,7 @@ async function saveSessionState(state: SessionState) {
 async function readSessionStateFromDisk(): Promise<SessionState | undefined> {
   try {
     const raw = await readFile(sessionStatePath, "utf8");
-    return normalizeSessionState(JSON.parse(raw) as Partial<SessionState>);
+    return normalizeSessionState(parseJson<Partial<SessionState>>(raw));
   } catch (error: unknown) {
     if (isFileMissingError(error)) {
       return undefined;

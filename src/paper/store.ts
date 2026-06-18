@@ -1,8 +1,9 @@
 import { copyFile, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { dataDir, spaceDataDir, workspaceRoot } from "../hub/config.js";
+import { dataDir, getRuntimeMemoryInfo, type RuntimeMemoryInfo, spaceDataDir, workspaceRoot } from "../hub/config.js";
 import type { HubActor } from "../hub/types.js";
+import { parseJson } from "../utils/json.js";
 import { paperStatePath } from "./config.js";
 import type {
   LiteratureReviewArtifact,
@@ -205,6 +206,7 @@ export interface UpdatePaperProjectStatusInput {
 }
 
 export interface PaperProjectBriefing {
+  runtime: RuntimeMemoryInfo;
   project: PaperProject;
   notes: PaperNote[];
   literatureReviews: Array<Omit<LiteratureReviewArtifact, "content"> & { contentPreview: string }>;
@@ -692,6 +694,7 @@ export async function getPaperBriefing(projectId: string): Promise<PaperProjectB
   const insights = state.insights.filter((insight) => insight.projectId === projectId);
 
   return {
+    runtime: getRuntimeMemoryInfo(),
     project,
     notes: state.notes.filter((note) => note.projectId === projectId).slice(0, maxBriefingItems),
     literatureReviews: literatureReviews.slice(0, maxBriefingItems).map((review) => ({
@@ -824,6 +827,7 @@ export async function searchPaperMemory(query: string, projectId?: string, limit
 export async function getPaperOverview() {
   const state = await loadPaperState();
   return {
+    runtime: getRuntimeMemoryInfo(),
     version: state.version,
     createdAt: state.createdAt,
     updatedAt: state.updatedAt,
@@ -848,7 +852,7 @@ export async function getPaperOverview() {
 export async function loadPaperState(): Promise<PaperState> {
   try {
     const raw = await readFile(paperStatePath, "utf8");
-    return normalizePaperState(JSON.parse(raw) as Partial<PaperState>);
+    return normalizePaperState(parseJson<Partial<PaperState>>(raw));
   } catch (error: unknown) {
     if (isFileMissingError(error)) {
       const state = createEmptyPaperState();
@@ -874,7 +878,7 @@ async function savePaperState(state: PaperState) {
 async function readPaperStateFromDisk(): Promise<PaperState | undefined> {
   try {
     const raw = await readFile(paperStatePath, "utf8");
-    return normalizePaperState(JSON.parse(raw) as Partial<PaperState>);
+    return normalizePaperState(parseJson<Partial<PaperState>>(raw));
   } catch (error: unknown) {
     if (isFileMissingError(error)) {
       return undefined;

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex ChatGPT Hub Manager</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">H</div>
+        <div>
+          <div class="brand-title">Codex ChatGPT Hub</div>
+          <div class="brand-subtitle">协同层管理控制台</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="overview">概览</button>
+        <button class="nav-item" data-view="spaces">记忆空间</button>
+        <button class="nav-item" data-view="connections">连接状态</button>
+        <button class="nav-item" data-view="logs">日志</button>
+        <button class="nav-item" data-view="settings">设置</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">概览</h1>
+          <p id="pageSubtitle">检查 Hub 状态、当前空间和连接入口</p>
+        </div>
+        <div class="actions">
+          <button class="icon-button" id="refreshButton" title="刷新">↻</button>
+          <button class="button" data-action="serve-restart">重启 Hub</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-overview">
+        <div class="status-grid">
+          <article class="stat-card">
+            <div class="label">当前空间</div>
+            <div class="value" id="currentSpace">-</div>
+            <div class="hint" id="spacePath">-</div>
+          </article>
+          <article class="stat-card">
+            <div class="label">HTTP MCP</div>
+            <div class="value" id="serviceStatus">-</div>
+            <div class="hint" id="serviceUrl">-</div>
+          </article>
+          <article class="stat-card">
+            <div class="label">Connector</div>
+            <div class="value" id="connectorStatus">-</div>
+            <div class="hint" id="connectorUrl">-</div>
+          </article>
+          <article class="stat-card">
+            <div class="label">认证</div>
+            <div class="value" id="authStatus">-</div>
+            <div class="hint">ChatGPT Connector 快速部署默认 No Auth</div>
+          </article>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>健康检查</h2>
+              <p>只展示协同层最关键的状态。</p>
+            </div>
+            <button class="button ghost" data-action="doctor">运行 doctor</button>
+          </div>
+          <div class="checks" id="healthChecks"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>共享记忆概览</h2>
+              <p>当前空间里的 hub、paper、session 和 run 数据。</p>
+            </div>
+          </div>
+          <div class="metric-grid" id="memoryMetrics"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-spaces">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>切换记忆空间</h2>
+              <p>切换后需要更新 Codex 配置并重启 HTTP MCP。</p>
+            </div>
+          </div>
+          <div class="space-control">
+            <select id="spaceSelect"></select>
+            <input id="spaceInput" placeholder="输入新空间名，例如 paper-vision">
+            <button class="button" id="saveSpaceButton">保存空间</button>
+          </div>
+          <div class="space-actions">
+            <button class="button ghost" data-action="config-install">更新 Codex 配置</button>
+            <button class="button ghost" data-action="serve-restart">重启 Hub 服务</button>
+            <button class="button ghost" id="openSpacePath">打开空间目录</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>已有空间</h2>
+              <p>来自 `.data/spaces/`，`default` 是旧数据兼容空间。</p>
+            </div>
+          </div>
+          <div class="space-list" id="spaceList"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-connections">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>连接入口</h2>
+              <p>给 Codex、ChatGPT Connector 和本地控制台使用。</p>
+            </div>
+            <button class="button ghost" data-action="tunnel-start">启动 tunnel</button>
+          </div>
+          <div class="info-table" id="connectionTable"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Codex 配置</h2>
+              <p>检查托管 MCP 配置是否安装。</p>
+            </div>
+            <button class="button ghost" data-action="config-install">安装 / 更新</button>
+          </div>
+          <pre id="codexConfigText"></pre>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>ngrok 状态</h2>
+              <p>用于 ChatGPT Connector 远程访问本机 MCP。</p>
+            </div>
+            <button class="button ghost" data-action="tunnel-status">刷新 tunnel</button>
+          </div>
+          <pre id="tunnelStatusText"></pre>
+        </section>
+      </section>
+
+      <section class="view" id="view-logs">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>服务日志</h2>
+              <p>显示 `npm run serve -- logs` 的尾部输出。</p>
+            </div>
+            <button class="button ghost" data-action="serve-start">启动服务</button>
+          </div>
+          <pre id="serviceLogs"></pre>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>操作输出</h2>
+              <p>按钮执行后的命令输出会显示在这里。</p>
+            </div>
+          </div>
+          <pre id="actionOutput"></pre>
+        </section>
+      </section>
+
+      <section class="view" id="view-settings">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>项目设置</h2>
+              <p>管理器读取的 Hub 根目录和 `.env`。</p>
+            </div>
+          </div>
+          <div class="info-table" id="settingsTable"></div>
+          <div class="space-actions">
+            <button class="button ghost" id="openProjectPath">打开项目目录</button>
+            <button class="button ghost" id="openDataPath">打开数据目录</button>
+            <button class="button ghost" data-action="tools">查看工具列表</button>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <script src="./renderer.js"></script>
+</body>
+</html>

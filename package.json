@@ -18,6 +18,8 @@
     "tunnel": "node dist/cli.js tunnel",
     "doctor": "node dist/cli.js doctor",
     "tools": "node dist/cli.js tools",
+    "manager": "npm --prefix apps/hub-manager start",
+    "manager:pack": "npm --prefix apps/hub-manager run pack",
     "wrap": "node dist/cli.js run",
     "http": "node dist/http.js",
     "start": "node dist/index.js",

@@ -1,0 +1,42 @@
+{
+  "name": "codex-chatgpt-hub-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop manager for Codex ChatGPT Hub.",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "node scripts/run-electron.cjs",
+    "pack": "electron-builder --win dir",
+    "pack:portable": "electron-builder --win portable",
+    "dist": "electron-builder --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.codexchatgpthub.manager",
+    "productName": "Codex ChatGPT Hub Manager",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "src/main.cjs"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Codex-ChatGPT-Hub-Manager-${version}-${arch}.${ext}"
+    }
+  }
+}
